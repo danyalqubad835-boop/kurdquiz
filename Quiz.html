@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Quiz Pro Max</title>
+
+<style>
+body{
+margin:0;
+font-family:sans-serif;
+background:linear-gradient(135deg,#667eea,#764ba2);
+color:#fff;
+text-align:center;
+}
+
+.container{
+background:#fff;
+color:#000;
+padding:25px;
+margin:40px auto;
+border-radius:15px;
+width:90%;
+max-width:420px;
+box-shadow:0 10px 30px rgba(0,0,0,0.3);
+}
+
+input{
+padding:12px;
+margin:6px;
+width:90%;
+border-radius:8px;
+border:1px solid #ccc;
+}
+
+button{
+padding:12px;
+margin:6px;
+border:none;
+border-radius:8px;
+background:#667eea;
+color:#fff;
+cursor:pointer;
+transition:0.3s;
+}
+
+button:hover{
+background:#5a67d8;
+transform:scale(1.05);
+}
+
+.hidden{display:none;}
+#error{color:red;}
+.answer-btn{display:block;width:100%;margin:8px 0;}
+.admin-btn{background:#e53e3e;}
+.unban-btn{background:#38a169;}
+.blur{filter:blur(8px);}
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>🎮 دەست بە کویز بکە</h2>
+
+<!-- LOGIN -->
+<div id="authBox">
+<input id="username" placeholder="ناو">
+<input id="password" type="password" placeholder="پاسوۆرد">
+
+<button onclick="register()">دروستکردن</button>
+<button onclick="login()">چوونە ژوورەوە</button>
+
+<hr>
+
+<h4>ڕیسێتی ئەکاونت</h4>
+<input id="resetCode" placeholder="کۆدی ڕیسێت">
+<input id="resetUser" placeholder="ناو">
+<button onclick="resetAccount()">ڕیسێت</button>
+</div>
+
+<h3 id="error"></h3>
+
+<!-- START -->
+<div id="startBox" class="hidden">
+<button onclick="startQuiz()">🚀 دەست بە کویز بکە</button>
+<br>
+<input id="adminCode" placeholder="کۆدی ئەدمین">
+<button onclick="beAdmin()">👑</button>
+</div>
+
+<!-- QUIZ -->
+<div id="quiz" class="hidden">
+<h3 id="timer"></h3>
+<h2 id="question"></h2>
+<div id="answers"></div>
+
+<h3 id="resultText"></h3>
+<button id="nextBtn" class="hidden" onclick="nextQ()">➡️ داهاتوو</button>
+</div>
+
+<!-- ADMIN -->
+<div id="adminPanel" class="hidden">
+
+<h3>👑 پانێلی ئەدمین</h3>
+
+<input id="q" placeholder="پرسیار">
+<input id="a1" placeholder="وەڵام 1">
+<input id="a2" placeholder="وەڵام 2">
+<input id="a3" placeholder="وەڵام 3">
+<input id="a4" placeholder="وەڵام 4">
+<input id="correct" placeholder="وەڵامی ڕاست (0-3)">
+<input id="time" placeholder="کات (چرکە)">
+
+<button onclick="addQ()">➕ زیادکردن</button>
+
+<br>
+
+<button onclick="publish()">🟢 بڵاوکردنەوە</button>
+<button onclick="stopQuiz()">🔴 وەستاندن</button>
+
+<h3>👥 یوزەرەکان</h3>
+<div id="userList"></div>
+
+<!-- 🔥 زیادکرا -->
+<h3>📊 ئەنجامەکان</h3>
+<div id="resultsBox"></div>
+
+</div>
+
+</div>
+
+<script>
+
+// USERS
+let users=JSON.parse(localStorage.getItem("users")||"[]");
+let currentUser=null;
+
+let ADMIN_CODE="9999000785ggfkfvjkingaso990099mr.aso";
+let RESET_CODE="resetofnuc9jevooop";
+
+// 🔥 زیادکرا
+let userAnswers=[];
+let count=0;
+
+// REGISTER
+function register(){
+let u=username.value.trim();
+let p=password.value;
+
+if(!u||!p){error.innerText="ناو و پاسوۆرد";return;}
+if(users.find(x=>x.u===u)){error.innerText="هەیە";return;}
+
+users.push({u,p});
+localStorage.setItem("users",JSON.stringify(users));
+error.innerText="✔";
+}
+
+// LOGIN
+function login(){
+let u=username.value.trim();
+let p=password.value;
+
+let user=users.find(x=>x.u===u&&x.p===p);
+if(!user){error.innerText="هەڵە";return;}
+
+currentUser=u;
+
+authBox.classList.add("hidden");
+startBox.classList.remove("hidden");
+}
+
+// RESET
+function resetAccount(){
+if(resetCode.value!==RESET_CODE){alert("هەڵە");return;}
+
+users=users.filter(u=>u.u!==resetUser.value.trim());
+
+let played=JSON.parse(localStorage.getItem("played")||"[]");
+played=played.filter(p=>p!==resetUser.value.trim());
+
+localStorage.setItem("users",JSON.stringify(users));
+localStorage.setItem("played",JSON.stringify(played));
+
+alert("✔ ڕیسێت کرا");
+}
+
+// ADMIN
+function beAdmin(){
+if(adminCode.value===ADMIN_CODE){
+adminPanel.classList.remove("hidden");
+loadUsers();
+loadResults(); // 🔥
+}else alert("هەڵە");
+}
+
+// LOAD USERS
+function loadUsers(){
+let bans=JSON.parse(localStorage.getItem("bans")||"{}");
+let myBans=bans[currentUser]||[];
+
+userList.innerHTML=users.map(u=>`
+<div>
+${u.u}
+<button class="admin-btn" onclick="banUser('${u.u}')">🚫</button>
+<button class="unban-btn" onclick="unbanUser('${u.u}')">✅</button>
+${myBans.includes(u.u)?" (باندکراو)":""}
+</div>
+`).join("");
+}
+
+// BAN / UNBAN
+function banUser(user){
+let bans=JSON.parse(localStorage.getItem("bans")||"{}");
+if(!bans[currentUser])bans[currentUser]=[];
+if(!bans[currentUser].includes(user))bans[currentUser].push(user);
+localStorage.setItem("bans",JSON.stringify(bans));
+loadUsers();
+}
+
+function unbanUser(user){
+let bans=JSON.parse(localStorage.getItem("bans")||"{}");
+if(!bans[currentUser])return;
+bans[currentUser]=bans[currentUser].filter(u=>u!==user);
+localStorage.setItem("bans",JSON.stringify(bans));
+loadUsers();
+}
+
+// ADD Q
+function addQ(){
+let draft=JSON.parse(localStorage.getItem("draft")||"{}");
+
+if(!draft[currentUser])draft[currentUser]=[];
+
+if(draft[currentUser].length>=500){
+alert("❌ 500 تەنها");
+return;
+}
+
+draft[currentUser].push({
+q:q.value,
+a:[a1.value,a2.value,a3.value,a4.value],
+c:parseInt(correct.value),
+t:parseInt(time.value)
+});
+
+localStorage.setItem("draft",JSON.stringify(draft));
+alert("✔ زیادکرا");
+}
+
+// PUBLISH / STOP
+function publish(){
+let draft=JSON.parse(localStorage.getItem("draft")||"{}");
+let live=JSON.parse(localStorage.getItem("questions")||"{}");
+if(draft[currentUser]) live[currentUser]=draft[currentUser];
+localStorage.setItem("questions",JSON.stringify(live));
+alert("✔ بڵاوکراوە");
+}
+
+function stopQuiz(){
+let live=JSON.parse(localStorage.getItem("questions")||"{}");
+delete live[currentUser];
+localStorage.setItem("questions",JSON.stringify(live));
+alert("⛔ وەستا");
+}
+
+// QUIZ
+let used=[],score=0,current,timerInt;
+
+function startQuiz(){
+
+userAnswers=[];
+count=0;
+score=0;
+used=[];
+
+let played=JSON.parse(localStorage.getItem("played")||"[]");
+if(played.includes(currentUser)){
+error.innerText="❌ تۆ پێشتر کویزت کردووە";
+return;
+}
+
+let data=JSON.parse(localStorage.getItem("questions")||"{}");
+let bans=JSON.parse(localStorage.getItem("bans")||"{}");
+
+let bannedAdmins=[];
+for(let a in bans){
+if(bans[a].includes(currentUser)) bannedAdmins.push(a);
+}
+
+let all=[];
+for(let key in data){
+if(bannedAdmins.includes(key)) continue;
+all=all.concat(data[key]);
+}
+
+if(all.length===0){
+error.innerText="❌ پرسیار نیە";
+return;
+}
+
+startBox.classList.add("hidden");
+quiz.classList.remove("hidden");
+
+loadQ();
+}
+
+function loadQ(){
+
+clearInterval(timerInt);
+
+// 🔥 10 پرسیار
+if(count>=10){ finish(); return;}
+
+let data=JSON.parse(localStorage.getItem("questions")||"{}");
+let bans=JSON.parse(localStorage.getItem("bans")||"{}");
+
+let bannedAdmins=[];
+for(let a in bans){
+if(bans[a].includes(currentUser)) bannedAdmins.push(a);
+}
+
+let all=[];
+for(let key in data){
+if(bannedAdmins.includes(key)) continue;
+all=all.concat(data[key]);
+}
+
+let available=all.filter((_,i)=>!used.includes(i));
+
+if(available.length===0){ finish(); return;}
+
+let rand=available[Math.floor(Math.random()*available.length)];
+let index=all.indexOf(rand);
+
+used.push(index);
+current=rand;
+
+question.innerText=rand.q;
+
+answers.innerHTML=rand.a.map(a=>
+`<button class="answer-btn" onclick="answer('${a}')">${a}</button>`
+).join("");
+
+startTimer(rand.t||10);
+}
+
+function startTimer(t){
+let time=t;
+timer.innerText="⏱ "+time;
+
+timerInt=setInterval(()=>{
+time--;
+timer.innerText="⏱ "+time;
+
+if(time<=0){
+clearInterval(timerInt);
+
+// 🔥 save
+userAnswers.push({
+q:current.q,
+your:"",
+correct:current.a[current.c],
+ok:false
+});
+
+count++;
+
+showResult(false);
+}
+},1000);
+}
+
+function answer(a){
+clearInterval(timerInt);
+
+let correct=current.a[current.c];
+let ok=(a===correct);
+
+if(ok) score++;
+
+// 🔥 save
+userAnswers.push({
+q:current.q,
+your:a,
+correct:correct,
+ok:ok
+});
+
+count++;
+
+showResult(ok);
+}
+
+function showResult(ok){
+resultText.innerText= ok?"✅ ڕاستە":"❌ هەڵەیە";
+nextBtn.classList.remove("hidden");
+}
+
+function nextQ(){
+resultText.innerText="";
+nextBtn.classList.add("hidden");
+loadQ();
+}
+
+function finish(){
+let played=JSON.parse(localStorage.getItem("played")||"[]");
+played.push(currentUser);
+localStorage.setItem("played",JSON.stringify(played));
+
+// 🔥 save results
+let results=JSON.parse(localStorage.getItem("results")||"[]");
+
+results.push({
+user:currentUser,
+score:score,
+answers:userAnswers
+});
+
+localStorage.setItem("results",JSON.stringify(results));
+
+alert("🎉 تەواو ✔ سکۆر: "+score);
+}
+
+// 🔥 ADMIN RESULTS
+function loadResults(){
+let results=JSON.parse(localStorage.getItem("results")||"[]");
+
+resultsBox.innerHTML=results.map(r=>`
+<div style="border:1px solid #ccc;margin:10px;padding:10px">
+<b>${r.user}</b> - سکۆر: ${r.score}
+${r.answers.map(a=>`
+<div>
+${a.q}<br>
+تۆ: ${a.your || "هیچ"} | ڕاست: ${a.correct}
+</div>
+`).join("")}
+</div>
+`).join("");
+}
+
+// ANTI-CHEAT
+document.addEventListener("contextmenu", e=>e.preventDefault());
+
+document.addEventListener("keydown", function(e){
+if(e.ctrlKey && ["u","c","x","s"].includes(e.key.toLowerCase()) || e.key==="PrintScreen"){
+e.preventDefault();
+alert("🚫 ڕێگە پێنەدراوە");
+}
+});
+
+document.addEventListener("visibilitychange", function(){
+if(document.hidden){
+document.body.innerHTML="<h1 style='color:red'>🚫 قەدەغە</h1>";
+}
+});
+
+window.addEventListener("blur", ()=>{
+document.body.classList.add("blur");
+});
+
+window.addEventListener("focus", ()=>{
+document.body.classList.remove("blur");
+});
+
+</script>
+
+</body>
+</html>
