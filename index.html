@@ -64,7 +64,10 @@ transform:scale(1.05);
 
 <h2>🎮 دەست بە کویز بکە</h2>
 
-<!-- LOGIN -->
+<!-- 🔥 Leaderboard زیادکرا -->
+<h3>🏆 Leaderboard</h3>
+<div id="leaderboard"></div>
+
 <div id="authBox">
 <input id="username" placeholder="ناو">
 <input id="password" type="password" placeholder="پاسوۆرد">
@@ -82,15 +85,16 @@ transform:scale(1.05);
 
 <h3 id="error"></h3>
 
-<!-- START -->
 <div id="startBox" class="hidden">
 <button onclick="startQuiz()">🚀 دەست بە کویز بکە</button>
 <br>
 <input id="adminCode" placeholder="کۆدی ئەدمین">
 <button onclick="beAdmin()">👑</button>
+
+<br>
+<button onclick="logout()" style="background:red;">🚪 Logout</button>
 </div>
 
-<!-- QUIZ -->
 <div id="quiz" class="hidden">
 <h3 id="timer"></h3>
 <h2 id="question"></h2>
@@ -100,7 +104,6 @@ transform:scale(1.05);
 <button id="nextBtn" class="hidden" onclick="nextQ()">➡️ داهاتوو</button>
 </div>
 
-<!-- ADMIN -->
 <div id="adminPanel" class="hidden">
 
 <h3>👑 پانێلی ئەدمین</h3>
@@ -123,7 +126,6 @@ transform:scale(1.05);
 <h3>👥 یوزەرەکان</h3>
 <div id="userList"></div>
 
-<!-- 🔥 زیادکرا -->
 <h3>📊 ئەنجامەکان</h3>
 <div id="resultsBox"></div>
 
@@ -133,6 +135,17 @@ transform:scale(1.05);
 
 <script>
 
+// auto login
+window.onload = function(){
+let saved = localStorage.getItem("currentUser");
+if(saved){
+currentUser = saved;
+authBox.classList.add("hidden");
+startBox.classList.remove("hidden");
+}
+loadLeaderboard(); // 🔥
+};
+
 // USERS
 let users=JSON.parse(localStorage.getItem("users")||"[]");
 let currentUser=null;
@@ -140,7 +153,6 @@ let currentUser=null;
 let ADMIN_CODE="9999000785ggfkfvjkingaso990099mr.aso";
 let RESET_CODE="resetofnuc9jevooop";
 
-// 🔥 زیادکرا
 let userAnswers=[];
 let count=0;
 
@@ -166,9 +178,16 @@ let user=users.find(x=>x.u===u&&x.p===p);
 if(!user){error.innerText="هەڵە";return;}
 
 currentUser=u;
+localStorage.setItem("currentUser",u);
 
 authBox.classList.add("hidden");
 startBox.classList.remove("hidden");
+}
+
+// LOGOUT
+function logout(){
+localStorage.removeItem("currentUser");
+location.reload();
 }
 
 // RESET
@@ -191,7 +210,7 @@ function beAdmin(){
 if(adminCode.value===ADMIN_CODE){
 adminPanel.classList.remove("hidden");
 loadUsers();
-loadResults(); // 🔥
+loadResults();
 }else alert("هەڵە");
 }
 
@@ -310,7 +329,6 @@ function loadQ(){
 
 clearInterval(timerInt);
 
-// 🔥 10 پرسیار
 if(count>=10){ finish(); return;}
 
 let data=JSON.parse(localStorage.getItem("questions")||"{}");
@@ -357,7 +375,6 @@ timer.innerText="⏱ "+time;
 if(time<=0){
 clearInterval(timerInt);
 
-// 🔥 save
 userAnswers.push({
 q:current.q,
 your:"",
@@ -380,7 +397,6 @@ let ok=(a===correct);
 
 if(ok) score++;
 
-// 🔥 save
 userAnswers.push({
 q:current.q,
 your:a,
@@ -409,7 +425,6 @@ let played=JSON.parse(localStorage.getItem("played")||"[]");
 played.push(currentUser);
 localStorage.setItem("played",JSON.stringify(played));
 
-// 🔥 save results
 let results=JSON.parse(localStorage.getItem("results")||"[]");
 
 results.push({
@@ -420,10 +435,25 @@ answers:userAnswers
 
 localStorage.setItem("results",JSON.stringify(results));
 
+loadLeaderboard(); // 🔥
+
 alert("🎉 تەواو ✔ سکۆر: "+score);
 }
 
-// 🔥 ADMIN RESULTS
+// 🔥 LEADERBOARD FUNCTION
+function loadLeaderboard(){
+let results=JSON.parse(localStorage.getItem("results")||"[]");
+
+results.sort((a,b)=>b.score-a.score);
+
+let top=results.slice(0,10);
+
+leaderboard.innerHTML=top.map(r=>`
+<div>${r.user} - ${r.score}</div>
+`).join("");
+}
+
+// ADMIN RESULTS
 function loadResults(){
 let results=JSON.parse(localStorage.getItem("results")||"[]");
 
