@@ -64,7 +64,6 @@ transform:scale(1.05);
 
 <h2>🎮 دەست بە کویز بکە</h2>
 
-<!-- 🔥 Leaderboard زیادکرا -->
 <h3>🏆 Leaderboard</h3>
 <div id="leaderboard"></div>
 
@@ -135,6 +134,11 @@ transform:scale(1.05);
 
 <script>
 
+// 🔥 پاراستنی questions (زیادکرا)
+if(!localStorage.getItem("questions")){
+localStorage.setItem("questions", JSON.stringify({}));
+}
+
 // auto login
 window.onload = function(){
 let saved = localStorage.getItem("currentUser");
@@ -143,7 +147,7 @@ currentUser = saved;
 authBox.classList.add("hidden");
 startBox.classList.remove("hidden");
 }
-loadLeaderboard(); // 🔥
+loadLeaderboard();
 };
 
 // USERS
@@ -246,25 +250,32 @@ localStorage.setItem("bans",JSON.stringify(bans));
 loadUsers();
 }
 
-// ADD Q
+// 🔥 ADD Q (زیادکرا بۆ پاراستن)
 function addQ(){
 let draft=JSON.parse(localStorage.getItem("draft")||"{}");
+let live=JSON.parse(localStorage.getItem("questions")||"{}");
 
 if(!draft[currentUser])draft[currentUser]=[];
+if(!live[currentUser])live[currentUser]=[];
 
 if(draft[currentUser].length>=500){
 alert("❌ 500 تەنها");
 return;
 }
 
-draft[currentUser].push({
+let newQ={
 q:q.value,
 a:[a1.value,a2.value,a3.value,a4.value],
 c:parseInt(correct.value),
 t:parseInt(time.value)
-});
+};
+
+draft[currentUser].push(newQ);
+live[currentUser].push(newQ);
 
 localStorage.setItem("draft",JSON.stringify(draft));
+localStorage.setItem("questions",JSON.stringify(live));
+
 alert("✔ زیادکرا");
 }
 
@@ -435,17 +446,15 @@ answers:userAnswers
 
 localStorage.setItem("results",JSON.stringify(results));
 
-loadLeaderboard(); // 🔥
+loadLeaderboard();
 
 alert("🎉 تەواو ✔ سکۆر: "+score);
 }
 
-// 🔥 LEADERBOARD FUNCTION
+// LEADERBOARD
 function loadLeaderboard(){
 let results=JSON.parse(localStorage.getItem("results")||"[]");
-
 results.sort((a,b)=>b.score-a.score);
-
 let top=results.slice(0,10);
 
 leaderboard.innerHTML=top.map(r=>`
